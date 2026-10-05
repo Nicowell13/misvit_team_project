@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePancakeEvent, pancakeConfig, verifyPancakeSignature } from '@/lib/pancake'
 
 export async function GET() {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   const event = normalizePancakeEvent(payload)
   if (!event.externalId) return NextResponse.json({ error: 'Event ID wajib untuk idempotency.' }, { status: 400 })
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data: org } = await supabase.from('organizations').select('id').eq('slug', 'misvit-marketing').maybeSingle()
   if (!org) return NextResponse.json({ error: 'Organization belum tersedia.' }, { status: 503 })
 
