@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   metadata JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org managers read audit logs" ON public.audit_logs;
 CREATE POLICY "org managers read audit logs" ON public.audit_logs FOR SELECT USING (public.has_org_role(organization_id, ARRAY['admin','manager']));
 
 DROP POLICY IF EXISTS "org managers update budget_items" ON public.budget_items;

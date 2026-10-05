@@ -33,6 +33,8 @@ ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organization_members ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
@@ -42,7 +44,9 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = id);
 
 -- RLS Policies for organizations
-CREATE POLICY "Users can view organizations they are members of"
+DROP POLICY IF EXISTS "Users can view organizations they are members of" ON public.organizations;
+DROP POLICY IF EXISTS "Admins can create organizations" ON public.organizations;
+DROP POLICY IF EXISTS "Admins can update their organizations" ON public.organizations;CREATE POLICY "Users can view organizations they are members of"
   ON public.organizations FOR SELECT
   USING (
     EXISTS (
@@ -68,7 +72,9 @@ CREATE POLICY "Admins can update their organizations"
   );
 
 -- RLS Policies for organization_members
-CREATE POLICY "Members can view other members in same organization"
+DROP POLICY IF EXISTS "Members can view other members in same organization" ON public.organization_members;
+DROP POLICY IF EXISTS "Admins can add members" ON public.organization_members;
+DROP POLICY IF EXISTS "Admins can update member roles" ON public.organization_members;CREATE POLICY "Members can view other members in same organization"
   ON public.organization_members FOR SELECT
   USING (
     EXISTS (
