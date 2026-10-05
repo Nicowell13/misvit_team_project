@@ -13,14 +13,25 @@ const createSchemas = {
 async function context() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: membership } = await supabase.from('organization_members').select('organization_id,roles').eq('user_id', user.id).limit(1).maybeSingle()
-  return membership ? { supabase, user, organizationId: membership.organization_id as string, roles: (membership.roles ?? []) as string[] } : null
+  if (!user) return { error: 'unauthenticated' as const }
+  const { data: membership, error } = await supabase.from('organization_members').select('organization_id,roles').eq('user_id', user.id).limit(1).maybeSingle()
+  if (error) return { error: 'database' as const }
+  if (!membership) return { error: 'no_membership' as const }
+  return { supabase, user, organizationId: membership.organization_id as string, roles: (membership.roles ?? []) as string[] }
+}
+
+function contextError(ctx: Awaited<ReturnType<typeof context>>) {
+  if (!('error' in ctx)) return null
+  if (ctx.error === 'unauthenticated') return NextResponse.json({ error: 'Sesi login tidak ditemukan. Silakan login ulang.' }, { status: 401 })
+  if (ctx.error === 'no_membership') return NextResponse.json({ error: 'Akun belum terdaftar dalam organisasi MISVIT. Jalankan migration admin membership.' }, { status: 403 })
+  return NextResponse.json({ error: 'Tabel organisasi belum siap. Jalankan migration Supabase.' }, { status: 503 })
 }
 
 export async function GET() {
   const ctx = await context()
-  if (!ctx) return NextResponse.json({ error: 'Tidak terautentikasi.' }, { status: 401 })
+  const failure = contextError(ctx)
+  if (failure) return failure
+  if ('error' in ctx) throw new Error('unreachable')
   const org = ctx.organizationId
   const [campaigns, issues, expenses, budgets] = await Promise.all([
     ctx.supabase.from('campaigns').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
@@ -35,7 +46,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const ctx = await context()
-  if (!ctx) return NextResponse.json({ error: 'Tidak terautentikasi.' }, { status: 401 })
+  const failure = contextError(ctx)
+  if (failure) return failure
+  if ('error' in ctx) throw new Error('unreachable')
   const body = await request.json().catch(() => null)
   const action = z.enum(['campaign','issue','expense','budget']).safeParse(body?.action)
   if (!action.success) return NextResponse.json({ error: 'Aksi tidak valid.' }, { status: 400 })
@@ -55,7 +68,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const ctx = await context()
-  if (!ctx) return NextResponse.json({ error: 'Tidak terautentikasi.' }, { status: 401 })
+  const failure = contextError(ctx)
+  if (failure) return failure
+  if ('error' in ctx) throw new Error('unreachable')
   const body = await request.json().catch(() => null)
   const parsed = z.discriminatedUnion('action', [
     z.object({ action: z.literal('approve_expense'), id: uuid, note: z.string().trim().max(500).optional() }),
