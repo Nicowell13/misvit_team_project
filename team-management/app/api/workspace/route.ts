@@ -57,7 +57,8 @@ export async function POST(request: Request) {
   if (!action.success) return NextResponse.json({ error: 'Aksi tidak valid.' }, { status: 400 })
   const parsed = createSchemas[action.data].safeParse(body?.data)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Input tidak valid.' }, { status: 400 })
-  if (action.data === 'budget' && !ctx.roles.some(r => ['admin','manager'].includes(r))) return NextResponse.json({ error: 'Hanya admin atau team leader dapat mengubah RAB.' }, { status: 403 })
+  const leader = ctx.roles.some(r => ['admin','manager'].includes(r))
+  if (action.data !== 'expense' && !leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang dapat melakukan aksi ini.' }, { status: 403 })
 
   const org = ctx.organizationId
   let result
@@ -77,6 +78,10 @@ export async function PATCH(request: Request) {
   if ('error' in ctx) throw new Error('unreachable')
   const body = await request.json().catch(() => null)
   const parsed = z.discriminatedUnion('action', [
+    z.object({ action: z.literal('update_campaign'), id: uuid, data: createSchemas.campaign.extend({ status: z.enum(['planned','active','paused','completed','cancelled']) }) }),
+    z.object({ action: z.literal('delete_campaign'), id: uuid }),
+    z.object({ action: z.literal('update_task_status'), id: uuid, status: z.enum(['backlog','planned','in_progress','blocked','review','done']) }),
+    z.object({ action: z.literal('update_issue_status'), id: uuid, status: z.enum(['open','investigating','resolved','closed']), note: z.string().trim().max(1000).optional() }),
     z.object({ action: z.literal('approve_expense'), id: uuid, note: z.string().trim().max(500).optional() }),
     z.object({ action: z.literal('reject_expense'), id: uuid, note: z.string().trim().min(3).max(500) }),
     z.object({ action: z.literal('resolve_issue'), id: uuid, note: z.string().trim().min(3).max(1000) }),
@@ -84,10 +89,21 @@ export async function PATCH(request: Request) {
   ]).safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Input tidak valid.' }, { status: 400 })
   const leader = ctx.roles.some(r => ['admin','manager'].includes(r))
-  if (['approve_expense','reject_expense','edit_budget'].includes(parsed.data.action) && !leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang diizinkan.' }, { status: 403 })
+  if (!leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang diizinkan.' }, { status: 403 })
 
   let result
-  if (parsed.data.action === 'approve_expense' || parsed.data.action === 'reject_expense') {
+  if (parsed.data.action === 'delete_campaign') {
+    const { error } = await ctx.supabase.from('campaigns').delete().eq('id',parsed.data.id).eq('organization_id',ctx.organizationId)
+    if (error) return NextResponse.json({ error: 'Campaign masih dipakai atau gagal dihapus.' }, { status: 409 })
+    return NextResponse.json({ deleted:true })
+  } else if (parsed.data.action === 'update_campaign') {
+    const d=parsed.data.data;result=await ctx.supabase.from('campaigns').update({name:d.name,objective:d.objective||null,start_date:d.startDate||null,end_date:d.endDate||null,status:d.status}).eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).select().single()
+  } else if (parsed.data.action === 'update_task_status') {
+    result=await ctx.supabase.from('tasks').update({status:parsed.data.status}).eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).select().single()
+  } else if (parsed.data.action === 'update_issue_status') {
+    if (['resolved','closed'].includes(parsed.data.status)&&!parsed.data.note) return NextResponse.json({error:'Resolution note wajib.'},{status:400})
+    result=await ctx.supabase.from('issues').update({status:parsed.data.status,resolution_note:parsed.data.note||null}).eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).select().single()
+  } else if (parsed.data.action === 'approve_expense' || parsed.data.action === 'reject_expense') {
     const { data: expense } = await ctx.supabase.from('expenses').select('submitted_by,status').eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).maybeSingle()
     if (!expense) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan.' }, { status: 404 })
     if (expense.submitted_by === ctx.user.id) return NextResponse.json({ error: 'Pengaju tidak boleh menyetujui pengeluaran sendiri.' }, { status: 409 })

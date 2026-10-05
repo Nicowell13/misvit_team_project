@@ -15,7 +15,6 @@ const navigation = [
   { href: '/dashboard/issues', label: 'Issue', icon: FileWarning },
   { href: '/dashboard/reports', label: 'Laporan', icon: BarChart3 },
   { href: '/dashboard/insights', label: 'AI Insights', icon: BrainCircuit },
-  { href: '/dashboard/integrations', label: 'Integrasi', icon: FileSpreadsheet },
 ]
 
 export function AppShell({ children, email, roles }: { children: React.ReactNode; email: string; roles: string[] }) {
@@ -38,7 +37,7 @@ export function AppShell({ children, email, roles }: { children: React.ReactNode
         <button className="lg:hidden" onClick={() => setOpen(false)}><X /></button>
       </div>
       <nav className="flex-1 space-y-1 px-4 py-4">
-        {[...navigation,...(roles.includes('admin')?[{href:'/dashboard/users',label:'Add User',icon:UserPlus}]:[])].map(({href,label,icon:Icon}) => {
+        {[...navigation,...(roles.includes('admin')?[{href:'/dashboard/integrations',label:'Integrasi',icon:FileSpreadsheet},{href:'/dashboard/users',label:'Add User',icon:UserPlus}]:[])].map(({href,label,icon:Icon}) => {
           const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href)
           return <Link key={href} href={href} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${active ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}><Icon size={19}/>{label}</Link>
         })}
