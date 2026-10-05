@@ -6,5 +6,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
-  return <AppShell email={user.email ?? 'Admin'}>{children}</AppShell>
+  const { data: membership } = await supabase.from('organization_members').select('roles').eq('user_id', user.id).limit(1).maybeSingle()
+  return <AppShell email={user.email ?? 'User'} roles={(membership?.roles ?? []) as string[]}>{children}</AppShell>
 }
