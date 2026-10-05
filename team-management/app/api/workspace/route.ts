@@ -8,6 +8,7 @@ const createSchemas = {
   issue: z.object({ campaignId: uuid.optional(), title: z.string().trim().min(3).max(160), description: z.string().trim().max(2000).optional(), category: z.string().trim().min(2).max(60), severity: z.enum(['low','medium','high','critical']) }),
   expense: z.object({ campaignId: uuid, budgetItemId: uuid.optional(), transactionDate: z.string().date(), amount: z.coerce.number().int().positive().max(100_000_000_000), vendor: z.string().trim().max(120).optional(), purpose: z.string().trim().min(3).max(500) }),
   budget: z.object({ campaignId: uuid.optional(), category: z.string().trim().min(2).max(120), item: z.string().trim().min(2).max(180), unit: z.string().trim().max(40).optional(), volume: z.coerce.number().nonnegative().max(1_000_000), unitPrice: z.coerce.number().int().nonnegative().max(100_000_000_000) }),
+  task: z.object({ campaignId: uuid.optional(), title: z.string().trim().min(3).max(180), description: z.string().trim().max(2000).optional(), assigneeId: uuid.optional(), dueDate: z.string().date().optional(), priority: z.enum(['low','medium','high','urgent']) }),
 }
 
 async function context() {
@@ -33,15 +34,17 @@ export async function GET() {
   if (failure) return failure
   if ('error' in ctx) throw new Error('unreachable')
   const org = ctx.organizationId
-  const [campaigns, issues, expenses, budgets] = await Promise.all([
+  const [campaigns, issues, expenses, budgets, tasks, members] = await Promise.all([
     ctx.supabase.from('campaigns').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
     ctx.supabase.from('issues').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
     ctx.supabase.from('expenses').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
     ctx.supabase.from('budget_items').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
+    ctx.supabase.from('tasks').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
+    ctx.supabase.from('organization_members').select('user_id,profiles!organization_members_user_id_fkey(email,full_name)').eq('organization_id', org),
   ])
-  const error = campaigns.error ?? issues.error ?? expenses.error ?? budgets.error
+  const error = campaigns.error ?? issues.error ?? expenses.error ?? budgets.error ?? tasks.error ?? members.error
   if (error) return NextResponse.json({ error: 'Data workspace gagal dimuat.' }, { status: 500 })
-  return NextResponse.json({ roles: ctx.roles, userId: ctx.user.id, campaigns: campaigns.data, issues: issues.data, expenses: expenses.data, budgets: budgets.data })
+  return NextResponse.json({ roles: ctx.roles, userId: ctx.user.id, campaigns: campaigns.data, issues: issues.data, expenses: expenses.data, budgets: budgets.data, tasks: tasks.data, members: members.data })
 }
 
 export async function POST(request: Request) {
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
   if (failure) return failure
   if ('error' in ctx) throw new Error('unreachable')
   const body = await request.json().catch(() => null)
-  const action = z.enum(['campaign','issue','expense','budget']).safeParse(body?.action)
+  const action = z.enum(['campaign','issue','expense','budget','task']).safeParse(body?.action)
   if (!action.success) return NextResponse.json({ error: 'Aksi tidak valid.' }, { status: 400 })
   const parsed = createSchemas[action.data].safeParse(body?.data)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Input tidak valid.' }, { status: 400 })
@@ -61,7 +64,8 @@ export async function POST(request: Request) {
   if (action.data === 'campaign') { const d = createSchemas.campaign.parse(body.data); result = await ctx.supabase.from('campaigns').insert({ organization_id: org, name: d.name, objective: d.objective || null, start_date: d.startDate || null, end_date: d.endDate || null, created_by: ctx.user.id }).select().single() }
   else if (action.data === 'issue') { const d = createSchemas.issue.parse(body.data); result = await ctx.supabase.from('issues').insert({ organization_id: org, campaign_id: d.campaignId || null, title: d.title, description: d.description || null, category: d.category, severity: d.severity, reported_by: ctx.user.id }).select().single() }
   else if (action.data === 'expense') { const d = createSchemas.expense.parse(body.data); result = await ctx.supabase.from('expenses').insert({ organization_id: org, campaign_id: d.campaignId, budget_item_id: d.budgetItemId || null, transaction_date: d.transactionDate, amount: d.amount, vendor: d.vendor || null, purpose: d.purpose, status: 'submitted', submitted_by: ctx.user.id }).select().single() }
-  else { const d = createSchemas.budget.parse(body.data); result = await ctx.supabase.from('budget_items').insert({ organization_id: org, campaign_id: d.campaignId || null, category: d.category, item: d.item, unit: d.unit || null, volume: d.volume, unit_price: d.unitPrice, allocated_amount: Math.round(d.volume * d.unitPrice), source: 'manual' }).select().single() }
+  else if (action.data === 'budget') { const d = createSchemas.budget.parse(body.data); result = await ctx.supabase.from('budget_items').insert({ organization_id: org, campaign_id: d.campaignId || null, category: d.category, item: d.item, unit: d.unit || null, volume: d.volume, unit_price: d.unitPrice, allocated_amount: Math.round(d.volume * d.unitPrice), source: 'manual' }).select().single() }
+  else { const d = createSchemas.task.parse(body.data); result = await ctx.supabase.from('tasks').insert({ organization_id: org, campaign_id: d.campaignId || null, title: d.title, description: d.description || null, assignee_id: d.assigneeId || null, due_date: d.dueDate || null, priority: d.priority, status: 'planned', created_by: ctx.user.id }).select().single() }
   if (result.error) return NextResponse.json({ error: 'Data gagal disimpan.' }, { status: 500 })
   return NextResponse.json({ data: result.data }, { status: 201 })
 }
