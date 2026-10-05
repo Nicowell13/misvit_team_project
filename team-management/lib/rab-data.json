@@ -1,0 +1,348 @@
+[
+  {
+    "category": "Rekapitulasi",
+    "items": [
+      {
+        "no": 1,
+        "item": "Pengembangan Produk",
+        "unit": "='1. Pengembangan Produk'!F13",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 2,
+        "item": "Uji/validasi produk",
+        "unit": "='2. Uji_Validasi Produk'!F11",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 3,
+        "item": "Pengurusan HKI",
+        "unit": "='3. Pengurusan HKI'!F10",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 4,
+        "item": "Pengurusan Izin",
+        "unit": "='4. Pengurusan Izin'!F8",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 5,
+        "item": "produksi",
+        "unit": "='5. produksi'!F13",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 6,
+        "item": "Pemasaran",
+        "unit": "='6. pemasaran'!F17",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 7,
+        "item": "Penguatan Branding",
+        "unit": "='7. penguatan branding'!F11",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 8,
+        "item": "Promosi",
+        "unit": "='8. promosi'!F8",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 9,
+        "item": "Inisiasi kemitraan",
+        "unit": "='9. Inisiasi Kemitraan'!F8",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 10,
+        "item": "Jasa konsultasi",
+        "unit": "='10. Jasa Konsultasi'!F8",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      },
+      {
+        "no": 11,
+        "item": "pengembangan sdm",
+        "unit": "='11. pengembangan sdm'!F10",
+        "volume": null,
+        "unitPrice": null,
+        "amount": null
+      }
+    ],
+    "total": 0
+  },
+  {
+    "category": "4. Pengurusan Izin",
+    "items": [
+      {
+        "no": 1,
+        "item": "Biaya pendaftaran sertifikasi halal",
+        "unit": "produk",
+        "volume": 1.0,
+        "unitPrice": 5000000.0,
+        "amount": 5000000
+      }
+    ],
+    "total": 5000000
+  },
+  {
+    "category": "5. produksi",
+    "items": [
+      {
+        "no": 1,
+        "item": "Biaya maklon Misvit phase pertama",
+        "unit": "pcs",
+        "volume": 2850.0,
+        "unitPrice": 18000.0,
+        "amount": 51300000
+      },
+      {
+        "no": 2,
+        "item": "Biaya maklon Misvit phase kedua",
+        "unit": "pcs",
+        "volume": 2850.0,
+        "unitPrice": 18000.0,
+        "amount": 51300000
+      },
+      {
+        "no": 3,
+        "item": "Biaya maklon Misvit phase ketiga",
+        "unit": "psc",
+        "volume": 2850.0,
+        "unitPrice": 18000.0,
+        "amount": 51300000
+      }
+    ],
+    "total": 153900000
+  },
+  {
+    "category": "6. pemasaran",
+    "items": [
+      {
+        "no": 1,
+        "item": "Sewa Mobil",
+        "unit": "kali",
+        "volume": 6.0,
+        "unitPrice": 988000.0,
+        "amount": 5928000
+      },
+      {
+        "no": 2,
+        "item": "Uang saku perjalanan dinas",
+        "unit": "OH",
+        "volume": 12.0,
+        "unitPrice": 350000.0,
+        "amount": 4200000
+      },
+      {
+        "no": 3,
+        "item": "Konsumsi perjalanan dinas",
+        "unit": "OH",
+        "volume": 12.0,
+        "unitPrice": 150000.0,
+        "amount": 1800000
+      },
+      {
+        "no": 4,
+        "item": "Sewa Mobil",
+        "unit": "kali",
+        "volume": 2.0,
+        "unitPrice": 1017000.0,
+        "amount": 2034000
+      },
+      {
+        "no": 5,
+        "item": "Uang saku perjalanan dinas",
+        "unit": "OH",
+        "volume": 4.0,
+        "unitPrice": 350000.0,
+        "amount": 1400000
+      },
+      {
+        "no": 6,
+        "item": "Konsumsi perjalanan dinas",
+        "unit": "OH",
+        "volume": 4.0,
+        "unitPrice": 150000.0,
+        "amount": 600000
+      },
+      {
+        "no": 7,
+        "item": "Snack Konsumsi",
+        "unit": "OK",
+        "volume": 50.0,
+        "unitPrice": 25000.0,
+        "amount": 1250000
+      },
+      {
+        "no": 8,
+        "item": "Konsumsi",
+        "unit": "OK",
+        "volume": 50.0,
+        "unitPrice": 50000.0,
+        "amount": 2500000
+      },
+      {
+        "no": 9,
+        "item": "Honor Narasumber (4 orang)",
+        "unit": "OJ",
+        "volume": "=2*4",
+        "unitPrice": "=1000000",
+        "amount": 8000000
+      },
+      {
+        "no": 10,
+        "item": "ATK",
+        "unit": "paket",
+        "volume": 1.0,
+        "unitPrice": 78000.0,
+        "amount": 78000
+      }
+    ],
+    "total": 27790000
+  },
+  {
+    "category": "7. penguatan branding",
+    "items": [
+      {
+        "no": 1,
+        "item": "Biaya influencer",
+        "unit": "orang",
+        "volume": 5.0,
+        "unitPrice": 5000000.0,
+        "amount": 25000000
+      },
+      {
+        "no": 2,
+        "item": "Biaya cetak banner",
+        "unit": "pcs",
+        "volume": 15.0,
+        "unitPrice": 110000.0,
+        "amount": 1650000
+      },
+      {
+        "no": 3,
+        "item": "Biaya cetak brosur",
+        "unit": "pcs",
+        "volume": 3700.0,
+        "unitPrice": 1800.0,
+        "amount": 6660000
+      },
+      {
+        "no": 4,
+        "item": "Biaya KOL",
+        "unit": "orang",
+        "volume": 10.0,
+        "unitPrice": 3000000.0,
+        "amount": 30000000
+      }
+    ],
+    "total": 63310000
+  },
+  {
+    "category": "8. promosi",
+    "items": [
+      {
+        "no": 1,
+        "item": "Biaya iklan meta",
+        "unit": "hari",
+        "volume": 50.0,
+        "unitPrice": 250000.0,
+        "amount": 12500000
+      },
+      {
+        "no": 2,
+        "item": "Biaya iklan tiktok",
+        "unit": "hari",
+        "volume": 50.0,
+        "unitPrice": 250000.0,
+        "amount": 12500000
+      },
+      {
+        "no": 3,
+        "item": "Biaya iklan shopee",
+        "unit": "hari",
+        "volume": 50.0,
+        "unitPrice": 300000.0,
+        "amount": 15000000
+      }
+    ],
+    "total": 40000000
+  },
+  {
+    "category": "11. pengembangan sdm",
+    "items": [
+      {
+        "no": 1,
+        "item": "Konten kreator",
+        "unit": "orang",
+        "volume": 1.0,
+        "unitPrice": 3000000.0,
+        "amount": 3000000
+      },
+      {
+        "no": 2,
+        "item": "Editor video",
+        "unit": "orang",
+        "volume": 1.0,
+        "unitPrice": 3000000.0,
+        "amount": 3000000
+      },
+      {
+        "no": 3,
+        "item": "Admin media sosial",
+        "unit": "orang",
+        "volume": 1.0,
+        "unitPrice": 3000000.0,
+        "amount": 3000000
+      },
+      {
+        "no": 4,
+        "item": "Host live",
+        "unit": "orang",
+        "volume": 1.0,
+        "unitPrice": 3000000.0,
+        "amount": 3000000
+      },
+      {
+        "no": 5,
+        "item": "Packing",
+        "unit": "orang",
+        "volume": 1.0,
+        "unitPrice": 1500000.0,
+        "amount": 1500000
+      },
+      {
+        "no": 6,
+        "item": "Kurir",
+        "unit": "orang",
+        "volume": 1.0,
+        "unitPrice": 1500000.0,
+        "amount": 1500000
+      }
+    ],
+    "total": 15000000
+  }
+]
