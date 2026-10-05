@@ -2,15 +2,11 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export default function LoginPage() {
   const supabase = createClient()
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setError(new URLSearchParams(window.location.search).get('error'))
-  }, [])
 
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -20,9 +16,7 @@ export default function LoginPage() {
       },
     })
 
-    if (error) {
-      window.location.assign(`/auth/login?error=${encodeURIComponent(error.message)}`)
-    }
+    if (error) setError(error.message)
   }
 
   return (

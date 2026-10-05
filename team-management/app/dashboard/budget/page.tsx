@@ -1,3 +1,2 @@
-import { BudgetPage } from '@/components/data-pages'
-export default function Page(){ return <BudgetPage/> }
-
+import { BudgetWorkspace } from '@/components/workspace-pages'
+export default function Page(){ return <BudgetWorkspace/> }

@@ -1,3 +1,2 @@
-import { ExpensesPage } from '@/components/data-pages'
-export default function Page(){ return <ExpensesPage/> }
-
+import { ExpensesWorkspace } from '@/components/workspace-pages'
+export default function Page(){ return <ExpensesWorkspace/> }

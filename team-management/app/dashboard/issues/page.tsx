@@ -1,3 +1,2 @@
-import { IssuesPage } from '@/components/data-pages'
-export default function Page(){ return <IssuesPage/> }
-
+import { IssuesWorkspace } from '@/components/workspace-pages'
+export default function Page(){ return <IssuesWorkspace/> }
