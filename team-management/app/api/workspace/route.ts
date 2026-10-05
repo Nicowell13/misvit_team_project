@@ -15,7 +15,7 @@ async function context() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'unauthenticated' as const }
   const { data: membership, error } = await supabase.from('organization_members').select('organization_id,roles').eq('user_id', user.id).limit(1).maybeSingle()
-  if (error) return { error: 'database' as const }
+  if (error) return { error: 'database' as const, code: error.code, detail: error.message }
   if (!membership) return { error: 'no_membership' as const }
   return { supabase, user, organizationId: membership.organization_id as string, roles: (membership.roles ?? []) as string[] }
 }
@@ -24,7 +24,7 @@ function contextError(ctx: Awaited<ReturnType<typeof context>>) {
   if (!('error' in ctx)) return null
   if (ctx.error === 'unauthenticated') return NextResponse.json({ error: 'Sesi login tidak ditemukan. Silakan login ulang.' }, { status: 401 })
   if (ctx.error === 'no_membership') return NextResponse.json({ error: 'Akun belum terdaftar dalam organisasi MISVIT. Jalankan migration admin membership.' }, { status: 403 })
-  return NextResponse.json({ error: 'Tabel organisasi belum siap. Jalankan migration Supabase.' }, { status: 503 })
+  return NextResponse.json({ error: 'Database organisasi belum siap.', code: ctx.code, detail: ctx.detail }, { status: 503 })
 }
 
 export async function GET() {
