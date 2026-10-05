@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const parsed = createSchemas[action.data].safeParse(body?.data)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Input tidak valid.' }, { status: 400 })
   const leader = ctx.roles.some(r => ['admin','manager'].includes(r))
-  if (action.data !== 'expense' && !leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang dapat melakukan aksi ini.' }, { status: 403 })
+  if (!['expense','task','issue'].includes(action.data) && !leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang dapat melakukan aksi ini.' }, { status: 403 })
 
   const org = ctx.organizationId
   let result
@@ -89,7 +89,10 @@ export async function PATCH(request: Request) {
   ]).safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Input tidak valid.' }, { status: 400 })
   const leader = ctx.roles.some(r => ['admin','manager'].includes(r))
-  if (!leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang diizinkan.' }, { status: 403 })
+  const ownershipActions=['update_task_status','update_issue_status']
+  if (!leader&&!ownershipActions.includes(parsed.data.action)) return NextResponse.json({ error: 'Hanya admin atau team leader yang diizinkan.' }, { status: 403 })
+  if (!leader&&parsed.data.action==='update_task_status') { const{data}=await ctx.supabase.from('tasks').select('created_by').eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).maybeSingle();if(!data||data.created_by!==ctx.user.id)return NextResponse.json({error:'Hanya pembuat task yang dapat mengubah status.'},{status:403}) }
+  if (!leader&&parsed.data.action==='update_issue_status') { const{data}=await ctx.supabase.from('issues').select('reported_by').eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).maybeSingle();if(!data||data.reported_by!==ctx.user.id)return NextResponse.json({error:'Hanya pelapor issue yang dapat mengubah status.'},{status:403}) }
 
   let result
   if (parsed.data.action === 'delete_campaign') {
