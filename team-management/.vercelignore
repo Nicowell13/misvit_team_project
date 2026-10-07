@@ -2,7 +2,7 @@
 AGENTS.md
 CLAUDE.md
 SECURITY_FOLLOWUPS.md
-supabase/
-tests/
-docs/
+/supabase/
+/tests/
+/docs/
 *.tsbuildinfo
