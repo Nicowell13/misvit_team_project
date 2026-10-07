@@ -15,7 +15,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -37,8 +37,13 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/api')
   ) {
     const url = request.nextUrl.clone()
+    const destination = `${url.pathname}${url.search}`
     url.pathname = '/auth/login'
-    return NextResponse.redirect(url)
+    url.search = ''
+    url.searchParams.set('next', destination)
+    const redirect = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie))
+    return redirect
   }
 
   return supabaseResponse

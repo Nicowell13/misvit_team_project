@@ -1,7 +1,6 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import rab from '@/lib/rab-data.json'
 import { Badge, Card, Money, PageHeader } from '@/components/app-shell'
 
 type Campaign={id:string;name:string;objective:string|null;status:string;start_date:string|null;end_date:string|null}
@@ -37,40 +36,27 @@ export function BudgetWorkspace() {
   const [editing, setEditing] = useState<Budget | null>(null)
   const [formError, setFormError] = useState('')
   const leader = data?.roles.some(role => ['admin', 'manager'].includes(role))
-  const localCategories = rab.filter(category => category.category !== 'Rekapitulasi')
-  const localTotal = localCategories.reduce((total, category) => total + category.total, 0)
-  const hasDatabaseBudgets = Boolean(data?.budgets.length)
-  const dbTotal = data?.budgets.reduce((total, budget) => total + budget.allocated_amount, 0) ?? 0
-  const categories: BudgetCategoryGroup[] = hasDatabaseBudgets
-    ? Array.from(
-        data!.budgets.reduce((groups, budget) => {
-          const group = groups.get(budget.category) ?? { items: [], total: 0 }
-          group.items.push({
-            id: budget.id,
-            item: budget.item,
-            unit: budget.unit,
-            volume: budget.volume,
-            unit_price: budget.unit_price,
-            allocated_amount: budget.allocated_amount,
-          })
-          group.total += budget.allocated_amount
-          groups.set(budget.category, group)
-          return groups
-        }, new Map<string, { items: BudgetDisplayItem[]; total: number }>()),
-        ([name, group]) => ({ name, ...group }),
-      ).sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
-    : localCategories.map(category => ({
-        name: category.category,
-        total: category.total,
-        items: category.items.map(item => ({
-          no: item.no,
-          item: item.item,
-          unit: item.unit,
-          volume: item.volume,
-          unitPrice: item.unitPrice,
-          amount: item.amount,
-        })),
-      }))
+  const budgetTotal = data?.budgets.reduce((total, budget) => total + budget.allocated_amount, 0) ?? 0
+  const realizationTotal = data?.expenses
+    .filter(expense => ['approved', 'paid'].includes(expense.status))
+    .reduce((total, expense) => total + expense.amount, 0) ?? 0
+  const categories: BudgetCategoryGroup[] = Array.from(
+    (data?.budgets ?? []).reduce((groups, budget) => {
+      const group = groups.get(budget.category) ?? { items: [], total: 0 }
+      group.items.push({
+        id: budget.id,
+        item: budget.item,
+        unit: budget.unit,
+        volume: budget.volume,
+        unit_price: budget.unit_price,
+        allocated_amount: budget.allocated_amount,
+      })
+      group.total += budget.allocated_amount
+      groups.set(budget.category, group)
+      return groups
+    }, new Map<string, { items: BudgetDisplayItem[]; total: number }>()),
+    ([name, group]) => ({ name, ...group }),
+  ).sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -113,33 +99,26 @@ export function BudgetWorkspace() {
         : <Badge>Read only</Badge>}
     />
     <FormError value={error} />
-    <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="mb-6 grid gap-4 sm:grid-cols-2">
       <Card>
-        <p className="text-sm text-slate-500">Total RAB acuan</p>
-        <p className="mt-2 text-2xl font-bold"><Money value={localTotal} /></p>
-        <p className="mt-1 text-xs text-slate-500">Anggaran referensi awal</p>
+        <p className="text-sm text-slate-500">Anggaran RAB awal</p>
+        <p className="mt-2 text-2xl font-bold"><Money value={300000000} /></p>
+        <p className="mt-1 text-xs text-slate-500">Total anggaran yang disetujui</p>
       </Card>
       <Card>
-        <p className="text-sm text-slate-500">Total alokasi database</p>
-        <p className="mt-2 text-2xl font-bold"><Money value={dbTotal} /></p>
-        <p className="mt-1 text-xs text-slate-500">Dari {data?.budgets.length ?? 0} item tersimpan</p>
-      </Card>
-      <Card>
-        <p className="text-sm text-slate-500">Kategori terpantau</p>
-        <p className="mt-2 text-2xl font-bold">{categories.length}</p>
-        <p className="mt-1 text-xs text-slate-500">{hasDatabaseBudgets ? 'Berdasarkan item database' : 'Berdasarkan RAB acuan'}</p>
+        <p className="text-sm text-slate-500">Realisasi</p>
+        <p className="mt-2 text-2xl font-bold"><Money value={realizationTotal} /></p>
+        <p className="mt-1 text-xs text-slate-500">Pengeluaran approved dan paid</p>
       </Card>
     </div>
 
+    {budgetTotal !== 300000000 && data && (
+      <FormError value="Rincian RAB database belum berjumlah Rp300.000.000. Jalankan SQL koreksi RAB." />
+    )}
     {categories.length > 0 && (
       <div className="space-y-5">
-        {!hasDatabaseBudgets && (
-          <p className="text-sm text-slate-500">
-            Menampilkan rincian RAB acuan. Tambahkan item untuk mulai mencatat alokasi database.
-          </p>
-        )}
         {categories.map(category => {
-          const percentage = (category.total / (hasDatabaseBudgets ? dbTotal : localTotal)) * 100 || 0
+          const percentage = (category.total / 300000000) * 100 || 0
           return (
             <Card key={category.name} className="overflow-hidden p-0">
               <div className="border-b border-slate-100 p-5">
@@ -175,7 +154,7 @@ export function BudgetWorkspace() {
                       <th className="px-3 py-3">Volume</th>
                       <th className="px-3 py-3">Harga satuan</th>
                       <th className="px-5 py-3 text-right">Jumlah</th>
-                      {hasDatabaseBudgets && leader && <th className="px-5 py-3 text-right">Aksi</th>}
+                      {leader && <th className="px-5 py-3 text-right">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -195,17 +174,33 @@ export function BudgetWorkspace() {
                             ? <Money value={item.allocated_amount} />
                             : item.amount === null || item.amount === undefined ? '—' : <Money value={item.amount} />}
                         </td>
-                        {hasDatabaseBudgets && leader && (
+                        {leader && (
                           <td className="px-5 py-3 text-right">
-                            <button
-                              className="font-semibold text-emerald-700 hover:text-emerald-900"
-                              onClick={() => {
-                                const budget = data?.budgets.find(candidate => candidate.id === item.id)
-                                if (budget) { setEditing(budget); setOpen(true) }
-                              }}
-                            >
-                              Edit
-                            </button>
+                            <div className="flex justify-end gap-3">
+                              <button
+                                className="font-semibold text-emerald-700 hover:text-emerald-900"
+                                onClick={() => {
+                                  const budget = data?.budgets.find(candidate => candidate.id === item.id)
+                                  if (budget) { setEditing(budget); setOpen(true) }
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="font-semibold text-red-700 hover:text-red-900"
+                                onClick={async () => {
+                                  if (!item.id || !confirm(`Hapus item RAB ${item.item}?`)) return
+                                  try {
+                                    await mutate('PATCH', { action: 'delete_budget', id: item.id })
+                                    await load()
+                                  } catch (cause) {
+                                    alert(cause instanceof Error ? cause.message : 'Gagal menghapus item')
+                                  }
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -213,7 +208,7 @@ export function BudgetWorkspace() {
                     <tr className="border-t border-slate-200 bg-slate-50/70">
                       <td colSpan={3} className="px-5 py-3 font-semibold">Total {category.name}</td>
                       <td className="px-5 py-3 text-right font-bold"><Money value={category.total} /></td>
-                      {hasDatabaseBudgets && leader && <td />}
+                      {leader && <td />}
                     </tr>
                   </tbody>
                 </table>

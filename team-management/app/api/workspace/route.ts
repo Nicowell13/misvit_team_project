@@ -28,6 +28,18 @@ function contextError(ctx: Awaited<ReturnType<typeof context>>) {
   return NextResponse.json({ error: 'Database organisasi belum siap.', code: ctx.code, detail: ctx.detail }, { status: 503 })
 }
 
+// Missing archive schema is deployment readiness, not authentication failure.
+function archiveSchemaError(error: { code?: string; message?: string } | null) {
+  return error && ['42703', 'PGRST204'].includes(error.code ?? '') && error.message?.includes('archived_at')
+    ? NextResponse.json({ error: 'RAB belum siap. Admin perlu menjalankan SQL koreksi RAB sebelum deploy aplikasi.' }, { status: 503 })
+    : null
+}
+
+async function archiveReady(ctx: Exclude<Awaited<ReturnType<typeof context>>, { error: string }>) {
+  const { error } = await ctx.supabase.from('budget_items').select('archived_at').eq('organization_id', ctx.organizationId).limit(1)
+  return archiveSchemaError(error) ?? (error ? NextResponse.json({ error: 'Status RAB gagal diperiksa.' }, { status: 503 }) : null)
+}
+
 export async function GET() {
   const ctx = await context()
   const failure = contextError(ctx)
@@ -38,10 +50,12 @@ export async function GET() {
     ctx.supabase.from('campaigns').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
     ctx.supabase.from('issues').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
     ctx.supabase.from('expenses').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
-    ctx.supabase.from('budget_items').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
+    ctx.supabase.from('budget_items').select('*').eq('organization_id', org).is('archived_at', null).order('created_at', { ascending: false }),
     ctx.supabase.from('tasks').select('*').eq('organization_id', org).order('created_at', { ascending: false }),
     ctx.supabase.from('organization_members').select('user_id,profiles!organization_members_user_id_fkey(email,full_name)').eq('organization_id', org),
   ])
+  const schemaFailure = archiveSchemaError(budgets.error)
+  if (schemaFailure) return schemaFailure
   const error = campaigns.error ?? issues.error ?? expenses.error ?? budgets.error ?? tasks.error ?? members.error
   if (error) return NextResponse.json({ error: 'Data workspace gagal dimuat.' }, { status: 500 })
   return NextResponse.json({ roles: ctx.roles, userId: ctx.user.id, campaigns: campaigns.data, issues: issues.data, expenses: expenses.data, budgets: budgets.data, tasks: tasks.data, members: members.data })
@@ -60,6 +74,23 @@ export async function POST(request: Request) {
   const leader = ctx.roles.some(r => ['admin','manager'].includes(r))
   if (!['expense','task','issue'].includes(action.data) && !leader) return NextResponse.json({ error: 'Hanya admin atau team leader yang dapat melakukan aksi ini.' }, { status: 403 })
 
+  if (action.data === 'budget' || action.data === 'expense') {
+    const readiness = await archiveReady(ctx)
+    if (readiness) return readiness
+  }
+  if (action.data === 'expense') {
+    const d = createSchemas.expense.parse(body.data)
+    const { data: campaign, error: campaignError } = await ctx.supabase.from('campaigns').select('id').eq('id', d.campaignId).eq('organization_id', ctx.organizationId).maybeSingle()
+    if (campaignError) return NextResponse.json({ error: 'Campaign gagal diperiksa.' }, { status: 503 })
+    if (!campaign) return NextResponse.json({ error: 'Campaign tidak valid.' }, { status: 400 })
+    if (d.budgetItemId) {
+      const { data: budget, error } = await ctx.supabase.from('budget_items').select('id').eq('id', d.budgetItemId).eq('organization_id', ctx.organizationId).eq('campaign_id', d.campaignId).is('archived_at', null).maybeSingle()
+      const schemaFailure = archiveSchemaError(error)
+      if (schemaFailure) return schemaFailure
+      if (error) return NextResponse.json({ error: 'Item RAB gagal diperiksa.' }, { status: 503 })
+      if (!budget) return NextResponse.json({ error: 'Pilih item RAB aktif pada campaign ini.' }, { status: 400 })
+    }
+  }
   const org = ctx.organizationId
   let result
   if (action.data === 'campaign') { const d = createSchemas.campaign.parse(body.data); result = await ctx.supabase.from('campaigns').insert({ organization_id: org, name: d.name, objective: d.objective || null, start_date: d.startDate || null, end_date: d.endDate || null, created_by: ctx.user.id }).select().single() }
@@ -86,6 +117,7 @@ export async function PATCH(request: Request) {
     z.object({ action: z.literal('reject_expense'), id: uuid, note: z.string().trim().min(3).max(500) }),
     z.object({ action: z.literal('resolve_issue'), id: uuid, note: z.string().trim().min(3).max(1000) }),
     z.object({ action: z.literal('edit_budget'), id: uuid, data: createSchemas.budget.omit({ campaignId: true }) }),
+    z.object({ action: z.literal('delete_budget'), id: uuid }),
   ]).safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Input tidak valid.' }, { status: 400 })
   const leader = ctx.roles.some(r => ['admin','manager'].includes(r))
@@ -94,6 +126,13 @@ export async function PATCH(request: Request) {
   if (!leader&&parsed.data.action==='update_task_status') { const{data}=await ctx.supabase.from('tasks').select('created_by').eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).maybeSingle();if(!data||data.created_by!==ctx.user.id)return NextResponse.json({error:'Hanya pembuat task yang dapat mengubah status.'},{status:403}) }
   if (!leader&&parsed.data.action==='update_issue_status') { const{data}=await ctx.supabase.from('issues').select('reported_by').eq('id',parsed.data.id).eq('organization_id',ctx.organizationId).maybeSingle();if(!data||data.reported_by!==ctx.user.id)return NextResponse.json({error:'Hanya pelapor issue yang dapat mengubah status.'},{status:403}) }
 
+  if (parsed.data.action === 'edit_budget' || parsed.data.action === 'delete_budget') {
+    const { data: budget, error } = await ctx.supabase.from('budget_items').select('id').eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).is('archived_at', null).maybeSingle()
+    const schemaFailure = archiveSchemaError(error)
+    if (schemaFailure) return schemaFailure
+    if (error) return NextResponse.json({ error: 'Item RAB gagal diperiksa.' }, { status: 503 })
+    if (!budget) return NextResponse.json({ error: 'Item RAB tidak aktif atau tidak ditemukan.' }, { status: 409 })
+  }
   let result
   if (parsed.data.action === 'delete_campaign') {
     const { error } = await ctx.supabase.from('campaigns').delete().eq('id',parsed.data.id).eq('organization_id',ctx.organizationId)
@@ -114,9 +153,16 @@ export async function PATCH(request: Request) {
     result = await ctx.supabase.from('expenses').update({ status: parsed.data.action === 'approve_expense' ? 'approved' : 'rejected', approved_by: ctx.user.id, review_note: parsed.data.note || null }).eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).select().single()
   } else if (parsed.data.action === 'resolve_issue') {
     result = await ctx.supabase.from('issues').update({ status: 'resolved', resolution_note: parsed.data.note }).eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).select().single()
+  } else if (parsed.data.action === 'delete_budget') {
+    const { count, error: expenseError } = await ctx.supabase.from('expenses').select('id', { count: 'exact', head: true }).eq('budget_item_id', parsed.data.id).eq('organization_id', ctx.organizationId)
+    if (expenseError) return NextResponse.json({ error: 'Pengeluaran terkait RAB gagal diperiksa.' }, { status: 503 })
+    if (count) return NextResponse.json({ error: 'Item RAB sudah dipakai pengeluaran dan tidak dapat dihapus.' }, { status: 409 })
+    const { error } = await ctx.supabase.from('budget_items').delete().eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).is('archived_at', null)
+    if (error) return NextResponse.json({ error: 'Item RAB gagal dihapus.' }, { status: 500 })
+    return NextResponse.json({ deleted: true })
   } else {
     const d = parsed.data.data
-    result = await ctx.supabase.from('budget_items').update({ category: d.category, item: d.item, unit: d.unit || null, volume: d.volume, unit_price: d.unitPrice, allocated_amount: Math.round(d.volume * d.unitPrice) }).eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).select().single()
+    result = await ctx.supabase.from('budget_items').update({ category: d.category, item: d.item, unit: d.unit || null, volume: d.volume, unit_price: d.unitPrice, allocated_amount: Math.round(d.volume * d.unitPrice) }).eq('id', parsed.data.id).eq('organization_id', ctx.organizationId).is('archived_at', null).select().single()
   }
   if (result.error) return NextResponse.json({ error: 'Perubahan gagal disimpan.' }, { status: 500 })
   return NextResponse.json({ data: result.data })

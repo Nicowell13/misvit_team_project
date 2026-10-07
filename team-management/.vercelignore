@@ -1,0 +1,8 @@
+.env*
+AGENTS.md
+CLAUDE.md
+SECURITY_FOLLOWUPS.md
+supabase/
+tests/
+docs/
+*.tsbuildinfo

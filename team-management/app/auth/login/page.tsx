@@ -2,17 +2,21 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useState } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
   const supabase = createClient()
-  const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const [error, setError] = useState<string | null>(searchParams.get('error'))
 
   const handleGoogleLogin = async () => {
+    const next = new URLSearchParams(location.search).get('next') ?? '/dashboard'
+    document.cookie = `misvit_auth_next=${encodeURIComponent(next)}; Path=/; Max-Age=600; SameSite=Lax; Secure`
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${location.origin}/api/auth/callback?next=${encodeURIComponent(new URLSearchParams(location.search).get('next') ?? '/dashboard')}`,
+        redirectTo: `${location.origin}/api/auth/callback?next=${encodeURIComponent(next)}`,
       },
     })
 
@@ -52,4 +56,8 @@ export default function LoginPage() {
       </div>
     </div>
   )
+}
+
+export default function LoginPage() {
+  return <Suspense fallback={null}><LoginForm /></Suspense>
 }
